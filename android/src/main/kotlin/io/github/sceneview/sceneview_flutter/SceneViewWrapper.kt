@@ -17,6 +17,7 @@ import io.github.sceneview.model.ModelInstance
 import io.github.sceneview.node.ModelNode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class SceneViewWrapper(
@@ -30,6 +31,8 @@ class SceneViewWrapper(
     private var sceneView: ARSceneView
     private val _mainScope = CoroutineScope(Dispatchers.Main)
     private val _channel = MethodChannel(messenger, "scene_view_$id")
+    private val _nodesMap = HashMap<String, ModelNode>()
+    private var _isSessionReady = false
 
     override fun getView(): View {
         Log.i(TAG, "getView:")
@@ -38,6 +41,8 @@ class SceneViewWrapper(
 
     override fun dispose() {
         Log.i(TAG, "dispose")
+        _isSessionReady = false
+        _nodesMap.clear()
     }
 
     init {
@@ -53,10 +58,12 @@ class SceneViewWrapper(
                 config.instantPlacementMode = Config.InstantPlacementMode.DISABLED
             }
             onSessionResumed = { session ->
-                Log.i(TAG, "onSessionCreated")
+                Log.i(TAG, "onSessionResumed - session is active now")
+                _isSessionReady = true
             }
             onSessionFailed = { exception ->
                 Log.e(TAG, "onSessionFailed : $exception")
+                _isSessionReady = false
             }
             onSessionCreated = { session ->
                 Log.i(TAG, "onSessionCreated")
@@ -74,58 +81,85 @@ class SceneViewWrapper(
     }
 
     private suspend fun addNode(flutterNode: FlutterSceneViewNode) {
-        val node = buildNode(flutterNode) ?: return
+        // Wait for session to be ready before loading models
+        var retries = 50  // Wait up to 5 seconds
+        while (!_isSessionReady && retries > 0) {
+            delay(100)
+            retries--
+        }
+        
+        if (!_isSessionReady) {
+            Log.w(TAG, "Session not ready after waiting, cannot add node")
+            return
+        }
+        
+        // Additional check for engine and modelLoader
+        if (sceneView.engine == null || sceneView.modelLoader == null) {
+            Log.w(TAG, "Engine or modelLoader is null even though session is ready")
+            return
+        }
+        
+        val node = buildNode(flutterNode) ?: run {
+            Log.w(TAG, "Failed to build node")
+            return
+        }
         sceneView.addChildNode(node)
-        //AnchorNode(sceneView.engine, anchor).apply {}
-        Log.d("Done", "Done")
+        val nodeName = (flutterNode as? FlutterReferenceNode)?.name
+        if (nodeName != null) {
+            _nodesMap[nodeName] = node
+        }
+        Log.d(TAG, "Node added: $nodeName")
+    }
+
+    private fun removeNode(name: String) {
+        val node = _nodesMap[name]
+        if (node != null) {
+            sceneView.removeChildNode(node)
+            _nodesMap.remove(name)
+            Log.d(TAG, "Node removed: $name")
+        } else {
+            Log.w(TAG, "Node not found for removal: $name")
+        }
     }
 
     private suspend fun buildNode(flutterNode: FlutterSceneViewNode): ModelNode? {
+        // Ensure engine and modelLoader are ready before loading models
+        if (sceneView.engine == null || sceneView.modelLoader == null) {
+            Log.w(TAG, "Cannot load model: engine or modelLoader is not ready yet")
+            return null
+        }
+        
         var model: ModelInstance? = null
 
-        /*
-                AnchorNode(sceneView.engine, anchor)
-                    .apply {
-                        isEditable = true
-                        //isLoading = true
-                        sceneView.modelLoader.loadModelInstance(
-                            "https://sceneview.github.io/assets/models/DamagedHelmet.glb"
-                        )?.let { modelInstance ->
-                            addChildNode(
-                                ModelNode(
-                                    modelInstance = modelInstance,
-                                    // Scale to fit in a 0.5 meters cube
-                                    scaleToUnits = 0.5f,
-                                    // Bottom origin instead of center so the model base is on floor
-                                    centerOrigin = Position(y = -0.5f)
-                                ).apply {
-                                    isEditable = true
-                                }
-                            )
-                        }
-                        //isLoading = false
-                        anchorNode = this
-                    }
-        */
         when (flutterNode) {
             is FlutterReferenceNode -> {
-                val fileLocation = Utils.getFlutterAssetKey(activity, flutterNode.fileLocation)
-                Log.d("SceneViewWrapper", fileLocation)
-                model =
-                    sceneView.modelLoader.loadModelInstance(fileLocation)
+                val fileLocation = flutterNode.fileLocation
+                // Check if it's a URL (starts with http:// or https://)
+                val isUrl = fileLocation.startsWith("http://") || fileLocation.startsWith("https://")
+                
+                try {
+                    if (isUrl) {
+                        // Load from URL directly
+                        Log.d(TAG, "Loading model from URL: $fileLocation")
+                        model = sceneView.modelLoader?.loadModelInstance(fileLocation)
+                    } else {
+                        // Load from Flutter asset
+                        val assetKey = Utils.getFlutterAssetKey(activity, fileLocation)
+                        Log.d(TAG, "Loading model from asset: $assetKey")
+                        model = sceneView.modelLoader?.loadModelInstance(assetKey)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error loading model: ${e.message}", e)
+                    return null
+                }
             }
         }
         if (model != null) {
-            val modelNode = ModelNode(modelInstance = model, scaleToUnits = 1.0f).apply {
+            val modelNode = ModelNode(modelInstance = model, scaleToUnits = flutterNode.scaleUnits).apply {
                 transform(
                     position = flutterNode.position,
                     rotation = flutterNode.rotation,
-                    //scale = flutterNode.scale,
                 )
-                //scaleToUnitsCube(flutterNode.scaleUnits)
-                // TODO: Fix centerOrigin
-                //     centerOrigin(Position(x=-1.0f, y=-1.0f))
-                //playAnimation()
             }
             return modelNode
         }
@@ -145,6 +179,17 @@ class SceneViewWrapper(
                     addNode(flutterNode)
                 }
                 result.success(null)
+                return
+            }
+
+            "removeNode" -> {
+                val name = call.argument<String>("name")
+                if (name != null) {
+                    removeNode(name)
+                    result.success(null)
+                } else {
+                    result.error("INVALID_ARGUMENT", "Name is required", null)
+                }
                 return
             }
 

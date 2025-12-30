@@ -17,11 +17,14 @@ class SceneViewController {
   }
 
   void addNode(SceneViewNode node) {
-    SceneviewFlutterPlatform.instance.addNode(node);
+    SceneviewFlutterPlatform.instance.addNode(sceneId, node);
+  }
+
+  void removeNode({required String name}) {
+    SceneviewFlutterPlatform.instance.removeNode(sceneId, name);
   }
 
   void dispose() {
     SceneviewFlutterPlatform.instance.dispose(sceneId);
   }
-
 }

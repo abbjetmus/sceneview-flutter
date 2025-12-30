@@ -13,16 +13,18 @@ abstract class FlutterSceneViewNode(
         fun from(map: Map<String, *>): FlutterSceneViewNode {
             val fileLocation = map["fileLocation"] as String?
             if (fileLocation != null) {
-                val p = FlutterPosition.from(map["position"] as Map<String, Float>?)
-                val r = FlutterRotation.from(map["rotation"] as Map<String, Float>?)
-                val s = FlutterScale.from(map["scale"] as Map<String, Float>?)
-                val scaleUnits = map["scaleUnits"] as Float?
+                val name = map["name"] as String?
+                val p = FlutterPosition.from(map["position"] as Map<String, *>?)
+                val r = FlutterRotation.from(map["rotation"] as Map<String, *>?)
+                val s = FlutterScale.from(map["scale"] as Map<String, *>?)
+                val scaleUnits = (map["scaleUnits"] as? Double)?.toFloat() ?: 1.0f
                 return FlutterReferenceNode(
                     fileLocation,
+                    name,
                     p.position,
                     r.rotation,
                     s.scale,
-                    scaleUnits ?: 1.0f,
+                    scaleUnits,
                 )
             }
             throw Exception()
@@ -33,6 +35,7 @@ abstract class FlutterSceneViewNode(
 
 class FlutterReferenceNode(
     val fileLocation: String,
+    val name: String?,
     position: Float3,
     rotation: Float3,
     scale: Float3,
@@ -42,13 +45,13 @@ class FlutterReferenceNode(
 
 class FlutterPosition(val position: Float3) {
     companion object {
-        fun from(map: Map<String, Float>?): FlutterPosition {
+        fun from(map: Map<String, *>?): FlutterPosition {
             if (map == null) {
                 return FlutterPosition(Float3(0f, 0f, 0f))
             }
-            val x = (map["x"] as Double).toFloat()
-            val y = (map["y"] as Double).toFloat()
-            val z = (map["z"] as Double).toFloat()
+            val x = ((map["x"] as? Double) ?: 0.0).toFloat()
+            val y = ((map["y"] as? Double) ?: 0.0).toFloat()
+            val z = ((map["z"] as? Double) ?: 0.0).toFloat()
             return FlutterPosition(Float3(x, y, z))
         }
     }
@@ -56,13 +59,13 @@ class FlutterPosition(val position: Float3) {
 
 class FlutterRotation(val rotation: Float3) {
     companion object {
-        fun from(map: Map<String, Float>?): FlutterRotation {
+        fun from(map: Map<String, *>?): FlutterRotation {
             if (map == null) {
                 return FlutterRotation(Float3(0f, 0f, 0f))
             }
-            val x = (map["x"] as Double).toFloat()
-            val y = (map["y"] as Double).toFloat()
-            val z = (map["z"] as Double).toFloat()
+            val x = ((map["x"] as? Double) ?: 0.0).toFloat()
+            val y = ((map["y"] as? Double) ?: 0.0).toFloat()
+            val z = ((map["z"] as? Double) ?: 0.0).toFloat()
             return FlutterRotation(Float3(x, y, z))
         }
     }
@@ -70,13 +73,13 @@ class FlutterRotation(val rotation: Float3) {
 
 class FlutterScale(val scale: Float3) {
     companion object {
-        fun from(map: Map<String, Float>?): FlutterScale {
+        fun from(map: Map<String, *>?): FlutterScale {
             if (map == null) {
-                return FlutterScale(Float3(0f, 0f, 0f))
+                return FlutterScale(Float3(1f, 1f, 1f))
             }
-            val x = (map["x"] as Double).toFloat()
-            val y = (map["y"] as Double).toFloat()
-            val z = (map["z"] as Double).toFloat()
+            val x = ((map["x"] as? Double) ?: 1.0).toFloat()
+            val y = ((map["y"] as? Double) ?: 1.0).toFloat()
+            val z = ((map["z"] as? Double) ?: 1.0).toFloat()
             return FlutterScale(Float3(x, y, z))
         }
     }

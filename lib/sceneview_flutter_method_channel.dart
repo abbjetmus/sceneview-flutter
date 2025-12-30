@@ -15,19 +15,17 @@ class MethodChannelSceneViewFlutter extends SceneviewFlutterPlatform {
   @visibleForTesting
   final methodChannel = const MethodChannel('sceneview_flutter');
 
-  MethodChannel? _channel;
+  final Map<int, MethodChannel> _channels = {};
 
   MethodChannel ensureChannelInitialized(int sceneId) {
-    MethodChannel? channel = _channel;
-    if (channel == null) {
-      channel = MethodChannel('scene_view_$sceneId');
+    if (!_channels.containsKey(sceneId)) {
+      final channel = MethodChannel('scene_view_$sceneId');
       channel.setMethodCallHandler(
-              (MethodCall call) => _handleMethodCall(call, sceneId));
-      _channel = channel;
+          (MethodCall call) => _handleMethodCall(call, sceneId));
+      _channels[sceneId] = channel;
     }
-    return channel;
+    return _channels[sceneId]!;
   }
-
 
   @override
   Future<void> init(int sceneId) async {
@@ -36,8 +34,15 @@ class MethodChannelSceneViewFlutter extends SceneviewFlutterPlatform {
   }
 
   @override
-  void addNode(SceneViewNode node) {
-    _channel?.invokeMethod('addNode', node.toMap());
+  void addNode(int sceneId, SceneViewNode node) {
+    final channel = ensureChannelInitialized(sceneId);
+    channel.invokeMethod('addNode', node.toMap());
+  }
+
+  @override
+  void removeNode(int sceneId, String name) {
+    final channel = ensureChannelInitialized(sceneId);
+    channel.invokeMethod('removeNode', {'name': name});
   }
 
   Future<dynamic> _handleMethodCall(MethodCall call, int mapId) async {
@@ -48,5 +53,7 @@ class MethodChannelSceneViewFlutter extends SceneviewFlutterPlatform {
   }
 
   @override
-  void dispose(int sceneId) {}
+  void dispose(int sceneId) {
+    _channels.remove(sceneId);
+  }
 }

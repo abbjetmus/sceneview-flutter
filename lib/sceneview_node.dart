@@ -1,22 +1,28 @@
 class SceneViewNode {
   final String fileLocation;
+  final String? name;
   final KotlinFloat3? position;
   final KotlinFloat3? rotation;
-  final double? scale;
+  final KotlinFloat3? scale;
+  final double? scaleUnits;
 
   SceneViewNode({
     required this.fileLocation,
+    this.name,
     this.position,
     this.rotation,
     this.scale,
+    this.scaleUnits,
   });
 
   Map<String, dynamic> toMap() {
     final map = {
       'fileLocation': fileLocation,
+      'name': name,
       'position': position?.toMap(),
       'rotation': rotation?.toMap(),
-      'scale': scale,
+      'scale': scale?.toMap(),
+      'scaleUnits': scaleUnits,
     };
     map.removeWhere((key, value) => value == null);
     return map;
