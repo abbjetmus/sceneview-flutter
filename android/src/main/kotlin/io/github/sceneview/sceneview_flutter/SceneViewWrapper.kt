@@ -51,19 +51,22 @@ class SceneViewWrapper(
     }
 
     init {
-        sceneView = ARSceneView(context, sharedLifecycle = lifecycle)
-        sceneView.apply {
-            configureSession { session, config ->
+        sceneView = ARSceneView(
+            context = context, 
+            sharedLifecycle = lifecycle,
+            sessionConfiguration = { session, config ->
                 config.lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
                 config.depthMode = when (session.isDepthModeSupported(Config.DepthMode.AUTOMATIC)) {
                     true -> Config.DepthMode.AUTOMATIC
                     else -> Config.DepthMode.DISABLED
                 }
                 config.instantPlacementMode = Config.InstantPlacementMode.DISABLED
-            }
-            onSessionResumed = { _isSessionReady = true }
+            },
+            onSessionResumed = { session ->
+                _isSessionReady = true
+            },
             onSessionFailed = { _isSessionReady = false }
-        }
+        )
         sceneView.layoutParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
