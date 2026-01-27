@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.FrameLayout
 import androidx.lifecycle.Lifecycle
 import com.google.ar.core.Config
+import com.google.ar.core.TrackingState
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -39,12 +40,14 @@ class SceneViewWrapper(
     private val _nodesMap = HashMap<String, ModelNode>()
     private var _isSessionReady = false
     private var _isDisposed = false
+    private var _isTracking = false
 
     override fun getView(): View = sceneView
 
     override fun dispose() {
         _isDisposed = true
         _isSessionReady = false
+        _isTracking = false
         _mainJob.cancel()
         _mainScope.cancel()
         _nodesMap.clear()
@@ -52,7 +55,7 @@ class SceneViewWrapper(
 
     init {
         sceneView = ARSceneView(
-            context = context, 
+            context = context,
             sharedLifecycle = lifecycle,
             sessionConfiguration = { session, config ->
                 config.lightEstimationMode = Config.LightEstimationMode.ENVIRONMENTAL_HDR
@@ -61,11 +64,23 @@ class SceneViewWrapper(
                     else -> Config.DepthMode.DISABLED
                 }
                 config.instantPlacementMode = Config.InstantPlacementMode.DISABLED
+                // Enable plane detection for better anchor placement
+                config.planeFindingMode = Config.PlaneFindingMode.HORIZONTAL_AND_VERTICAL
+                config.updateMode = Config.UpdateMode.LATEST_CAMERA_IMAGE
             },
             onSessionResumed = { session ->
                 _isSessionReady = true
             },
-            onSessionFailed = { _isSessionReady = false }
+            onSessionFailed = { _isSessionReady = false },
+            onSessionUpdated = { session, frame ->
+                // Update tracking state
+                val camera = frame.camera
+                _isTracking = camera.trackingState == TrackingState.TRACKING
+
+                if (!_isTracking) {
+                    Log.d(TAG, "Tracking state: ${camera.trackingState}")
+                }
+            }
         )
         sceneView.layoutParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
