@@ -1,11 +1,11 @@
 name: sceneview_flutter
-description: A demonstration of how to integrate SceneView in flutter.
-version: 0.0.1
+description: Flutter plugin for SceneView AR - load 3D models in augmented reality with hit testing, animations, anchors, and gesture support.
+version: 0.1.0
 homepage: https://github.com/SceneView
 
 environment:
-  sdk: '>=2.18.5 <3.0.0'
-  flutter: ">=2.5.0"
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
 
 dependencies:
   flutter:

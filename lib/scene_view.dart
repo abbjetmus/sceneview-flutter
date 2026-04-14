@@ -6,14 +6,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:sceneview_flutter/sceneview_controller.dart';
+import 'package:sceneview_flutter/sceneview_node.dart';
 
 class SceneView extends StatefulWidget {
   const SceneView({
     super.key,
     this.onViewCreated,
+    this.onTrackingStateChanged,
+    this.onTrackingFailureChanged,
   });
 
   final Function(SceneViewController)? onViewCreated;
+
+  /// Called when AR tracking state changes between tracking and not tracking.
+  final void Function(bool isTracking)? onTrackingStateChanged;
+
+  /// Called when the tracking failure reason changes.
+  /// Provides the specific reason (e.g. insufficient light, excessive motion)
+  /// so the app can show appropriate user guidance.
+  final void Function(TrackingFailureReason reason)? onTrackingFailureChanged;
 
   @override
   State<SceneView> createState() => _SceneViewState();
@@ -60,6 +71,15 @@ class _SceneViewState extends State<SceneView> {
 
   Future<void> onPlatformViewCreated(int id) async {
     final controller = await SceneViewController.init(id);
+
+    // Wire up callbacks
+    if (widget.onTrackingStateChanged != null) {
+      controller.onTrackingStateChanged(widget.onTrackingStateChanged);
+    }
+    if (widget.onTrackingFailureChanged != null) {
+      controller.onTrackingFailureChanged(widget.onTrackingFailureChanged);
+    }
+
     _controller.complete(controller);
     widget.onViewCreated?.call(controller);
   }

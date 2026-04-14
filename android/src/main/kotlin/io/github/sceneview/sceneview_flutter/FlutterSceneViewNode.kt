@@ -18,16 +18,43 @@ abstract class FlutterSceneViewNode(
                 val r = FlutterRotation.from(map["rotation"] as Map<String, *>?)
                 val s = FlutterScale.from(map["scale"] as Map<String, *>?)
                 val scaleUnits = (map["scaleUnits"] as? Double)?.toFloat() ?: 1.0f
+
+                // Gesture/editing properties
+                val isEditable = map["isEditable"] as? Boolean ?: false
+                val isPositionEditable = map["isPositionEditable"] as? Boolean ?: true
+                val isRotationEditable = map["isRotationEditable"] as? Boolean ?: true
+                val isScaleEditable = map["isScaleEditable"] as? Boolean ?: true
+                val editableScaleMin = (map["editableScaleMin"] as? Double)?.toFloat()
+                val editableScaleMax = (map["editableScaleMax"] as? Double)?.toFloat()
+                val editableScaleRange = if (editableScaleMin != null && editableScaleMax != null) {
+                    editableScaleMin..editableScaleMax
+                } else null
+
+                // Shadow properties
+                val isShadowCaster = map["isShadowCaster"] as? Boolean ?: true
+                val isShadowReceiver = map["isShadowReceiver"] as? Boolean ?: true
+
+                // Animation
+                val autoAnimate = map["autoAnimate"] as? Boolean ?: true
+
                 return FlutterReferenceNode(
-                    fileLocation,
-                    name,
-                    p.position,
-                    r.rotation,
-                    s.scale,
-                    scaleUnits,
+                    fileLocation = fileLocation,
+                    name = name,
+                    position = p.position,
+                    rotation = r.rotation,
+                    scale = s.scale,
+                    scaleUnits = scaleUnits,
+                    isEditable = isEditable,
+                    isPositionEditable = isPositionEditable,
+                    isRotationEditable = isRotationEditable,
+                    isScaleEditable = isScaleEditable,
+                    editableScaleRange = editableScaleRange,
+                    isShadowCaster = isShadowCaster,
+                    isShadowReceiver = isShadowReceiver,
+                    autoAnimate = autoAnimate,
                 )
             }
-            throw Exception()
+            throw IllegalArgumentException("fileLocation is required to create a FlutterSceneViewNode")
         }
     }
 }
@@ -39,7 +66,15 @@ class FlutterReferenceNode(
     position: Float3,
     rotation: Float3,
     scale: Float3,
-    scaleUnits: Float
+    scaleUnits: Float,
+    val isEditable: Boolean = false,
+    val isPositionEditable: Boolean = true,
+    val isRotationEditable: Boolean = true,
+    val isScaleEditable: Boolean = true,
+    val editableScaleRange: ClosedFloatingPointRange<Float>? = null,
+    val isShadowCaster: Boolean = true,
+    val isShadowReceiver: Boolean = true,
+    val autoAnimate: Boolean = true,
 ) :
     FlutterSceneViewNode(position, rotation, scale, scaleUnits)
 
