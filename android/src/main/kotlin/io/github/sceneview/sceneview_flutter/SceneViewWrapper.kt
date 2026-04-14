@@ -241,7 +241,7 @@ class SceneViewWrapper(
     // --- Depth occlusion ---
 
     private fun setDepthOcclusionEnabled(enabled: Boolean) {
-        sceneView.cameraStream.isDepthOcclusionEnabled = enabled
+        sceneView.cameraStream?.isDepthOcclusionEnabled = enabled
     }
 
     // --- Hit testing ---
@@ -249,15 +249,14 @@ class SceneViewWrapper(
     private fun hitTest(xPx: Float, yPx: Float): Map<String, Any>? {
         if (!_isSessionReady || !_isTracking) return null
 
-        val hitResults = sceneView.hitTestAR(
+        val firstHit = sceneView.hitTestAR(
             xPx = xPx,
             yPx = yPx,
             planeTypes = setOf(Plane.Type.HORIZONTAL_UPWARD_FACING, Plane.Type.HORIZONTAL_DOWNWARD_FACING, Plane.Type.VERTICAL),
             point = true,
             depthPoint = true,
-        )
+        ) ?: return null
 
-        val firstHit = hitResults.firstOrNull() ?: return null
         val pose = firstHit.hitPose
         return mapOf(
             "x" to pose.tx().toDouble(),
@@ -285,15 +284,13 @@ class SceneViewWrapper(
 
         if (_isDisposed || sceneView.engine == null || sceneView.modelLoader == null) return
 
-        val hitResults = sceneView.hitTestAR(
+        val firstHit = sceneView.hitTestAR(
             xPx = xPx,
             yPx = yPx,
             planeTypes = setOf(Plane.Type.HORIZONTAL_UPWARD_FACING, Plane.Type.HORIZONTAL_DOWNWARD_FACING, Plane.Type.VERTICAL),
             point = true,
             depthPoint = true,
-        )
-
-        val firstHit = hitResults.firstOrNull() ?: return
+        ) ?: return
 
         val modelNode = buildNode(flutterNode) ?: return
         if (_isDisposed) return
